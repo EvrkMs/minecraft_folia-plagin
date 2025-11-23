@@ -1,0 +1,22 @@
+name: auth_reg
+version: ${version}
+main: com.authreg.AuthRegPlugin
+api-version: "1.21"
+authors: [AVA]
+folia-supported: true
+commands:
+  register:
+    description: Регистрация аккаунта
+    aliases: [reg]
+    usage: "/register <пароль>"
+  login:
+    description: Вход в аккаунт
+    aliases: [l]
+    usage: "/login <пароль>"
+  authreg:
+    description: Администрирование auth_reg (только консоль)
+    usage: "/authreg <reload|reset <ник>>"
+permissions:
+  authreg.admin:
+    description: Администрирование auth_reg (только консоль)
+    default: false

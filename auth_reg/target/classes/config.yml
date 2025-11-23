@@ -1,0 +1,44 @@
+# Общие настройки
+login:
+  max-attempts: 5 # Сколько раз можно ввести неверный пароль, прежде чем игрока кикнет
+  timeout-seconds: 60 # Время на авторизацию, после истечения — кик
+  ip-cooldown-seconds: 120 # Таймаут, в течение которого с одного IP нельзя логиниться под другим аккаунтом
+  reminder-seconds: 10 # Как часто повторять титул с просьбой авторизации (секунды)
+  title:
+    enabled: true
+    title: "&cАвторизация"
+    subtitle: "&fВведите &b/login <пароль> &fили &b/register <пароль>"
+    fade-in: 5
+    stay: 40
+    fade-out: 5
+
+protection:
+  lock-movement: true
+  lock-commands: true
+  lock-damage: true
+  lock-interact: true
+  lock-inventory: true
+  lock-item-switch: true
+  allowed-commands:
+    - login
+    - l
+    - register
+    - reg
+
+teleport:
+  enabled: true # false чтобы не телепортировать и оставить игроков на месте
+  mode: "spawn" # spawn | previous | fixed
+  return-to-previous: true # Если true, возвращаем на старые координаты после логина
+  fixed:
+    world: "world"
+    x: 0.0
+    y: 200.0
+    z: 0.0
+    yaw: 0.0
+    pitch: 0.0
+
+database:
+  file: "plugins/auth_reg/data/auth.db"
+
+admin:
+  console-only: true

@@ -1,0 +1,29 @@
+prefix: "&7[&bAuth&fReg&7]"
+
+register:
+  prompt: "&fВы не зарегистрированы. Используйте &b/register <пароль>"
+  success: "&aУспешная регистрация! Теперь войдите командой &b/login <пароль>"
+  already: "&eВы уже зарегистрированы."
+
+login:
+  success: "&aУспешный вход. Приятной игры!"
+  already: "&eВы уже авторизованы."
+  prompt: "&fВведите &b/login <пароль>&f для входа."
+  not_registered: "&cСначала зарегистрируйтесь: &b/register <пароль>"
+  wrong_password: "&cНеверный пароль. Осталось попыток: &e{attempts_left}"
+  max_attempts: "&cПревышено количество попыток. Вы кикнуты."
+
+protections:
+  blocked: "&cАвторизуйтесь, чтобы взаимодействовать."
+
+timeout:
+  kick: "&cВы не авторизовались вовремя."
+
+ip:
+  cooldown: "&cС этого IP недавно заходили. Подождите &e{seconds_left} &cсек."
+
+admin:
+  console_only: "&cЭта команда доступна только из консоли."
+  reload: "&aКонфигурация перезагружена."
+  reset_success: "&aПароль игрока &e{player} &aсброшен."
+  reset_not_found: "&cАккаунт &e{player} &cне найден."
