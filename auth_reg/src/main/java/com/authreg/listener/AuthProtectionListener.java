@@ -3,6 +3,7 @@ package com.authreg.listener;
 import com.authreg.config.AuthConfig;
 import com.authreg.config.Messages;
 import com.authreg.user.AuthManager;
+import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class AuthProtectionListener implements Listener {
+    private static final double MOVEMENT_EPSILON = 1.0E-3;
     private final AuthManager authManager;
     private final Messages messages;
     private final AuthConfig config;
@@ -46,10 +48,14 @@ public class AuthProtectionListener implements Listener {
         if (!config.getProtectionSettings().isLockMovement()) return;
         Player player = event.getPlayer();
         if (!authManager.isAuthenticated(player.getUniqueId())) {
-            if (event.getTo() != null && !event.getFrom().toVector().equals(event.getTo().toVector())) {
-                event.setTo(event.getFrom());
+            Location to = event.getTo();
+            if (to == null) {
+                return;
             }
-            warn(player);
+            if (shouldBlockMovement(event.getFrom(), to)) {
+                event.setTo(lockToPrevious(event.getFrom(), to));
+                warn(player);
+            }
         }
     }
 
@@ -69,7 +75,8 @@ public class AuthProtectionListener implements Listener {
     public void onDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (!config.getProtectionSettings().isLockDamage()) return;
-        if (!authManager.isAuthenticated(player.getUniqueId())) {
+        UUID uuid = player.getUniqueId();
+        if (!authManager.isAuthenticated(uuid) || authManager.hasPostLoginProtection(uuid)) {
             event.setCancelled(true);
         }
     }
@@ -176,5 +183,25 @@ public class AuthProtectionListener implements Listener {
             player.sendMessage(messages.get("protections.blocked"));
             warnCooldown.put(player.getUniqueId(), now);
         }
+    }
+
+    private boolean shouldBlockMovement(Location from, Location to) {
+        double deltaX = Math.abs(from.getX() - to.getX());
+        double deltaZ = Math.abs(from.getZ() - to.getZ());
+        double deltaY = to.getY() - from.getY();
+        boolean horizontalChanged = deltaX > MOVEMENT_EPSILON || deltaZ > MOVEMENT_EPSILON;
+        boolean movingUp = deltaY > MOVEMENT_EPSILON;
+        boolean movingDown = deltaY < -MOVEMENT_EPSILON;
+        if (!horizontalChanged && movingDown) {
+            return false;
+        }
+        return horizontalChanged || movingUp;
+    }
+
+    private Location lockToPrevious(Location from, Location to) {
+        Location locked = from.clone();
+        locked.setYaw(to.getYaw());
+        locked.setPitch(to.getPitch());
+        return locked;
     }
 }

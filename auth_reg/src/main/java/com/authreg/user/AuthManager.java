@@ -27,6 +27,8 @@ public class AuthManager {
     private final Map<UUID, ScheduledTask> timeouts = new ConcurrentHashMap<>();
     private final Map<UUID, Location> previousLocations = new ConcurrentHashMap<>();
     private final Map<String, IpStamp> ipUsage = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> damageProtectionUntil = new ConcurrentHashMap<>();
+    private static final long POST_LOGIN_PROTECTION_MS = 2000L;
 
     public AuthManager(AuthRegPlugin plugin, AccountStorage storage, AuthConfig config, Messages messages) {
         this.plugin = plugin;
@@ -39,6 +41,7 @@ public class AuthManager {
         authenticated.remove(player.getUniqueId());
         attempts.put(player.getUniqueId(), 0);
         previousLocations.put(player.getUniqueId(), player.getLocation());
+        damageProtectionUntil.remove(player.getUniqueId());
         cleanupIpUsage();
         sendPrompt(player);
         loadLastLocation(player);
@@ -57,6 +60,7 @@ public class AuthManager {
         authenticated.remove(uuid);
         attempts.remove(uuid);
         previousLocations.remove(uuid);
+        damageProtectionUntil.remove(uuid);
     }
 
     public boolean isAuthenticated(UUID uuid) {
@@ -153,6 +157,7 @@ public class AuthManager {
         cancelTask(reminders.remove(uuid));
         cancelTask(timeouts.remove(uuid));
         returnPlayer(player);
+        damageProtectionUntil.put(uuid, System.currentTimeMillis() + POST_LOGIN_PROTECTION_MS);
     }
 
     public void sendPrompt(Player player) {
@@ -218,19 +223,20 @@ public class AuthManager {
         }
 
         if (target != null) {
-            player.teleportAsync(target);
+            teleportPlayerLater(player, target, 1L);
         }
     }
 
     private void returnPlayer(Player player) {
-        Location back = null;
-        if (config.getTeleportSettings().isReturnToPrevious()) {
-            back = previousLocations.get(player.getUniqueId());
+        boolean returnToPrevious = config.getTeleportSettings().isReturnToPrevious();
+        Location back = returnToPrevious ? previousLocations.get(player.getUniqueId()) : null;
+        if (back != null) {
+            teleportPlayerLater(player, back, 0L);
+            return;
         }
-        if (back == null) {
-            back = player.getWorld().getSpawnLocation();
+        if (!returnToPrevious) {
+            teleportPlayerLater(player, player.getWorld().getSpawnLocation(), 0L);
         }
-        player.teleportAsync(back);
     }
 
     private void cancelTask(ScheduledTask task) {
@@ -257,6 +263,18 @@ public class AuthManager {
             }
         }
         return false;
+    }
+
+    public boolean hasPostLoginProtection(UUID uuid) {
+        Long until = damageProtectionUntil.get(uuid);
+        if (until == null) {
+            return false;
+        }
+        if (System.currentTimeMillis() > until) {
+            damageProtectionUntil.remove(uuid);
+            return false;
+        }
+        return true;
     }
 
     private String color(String text) {
@@ -291,13 +309,31 @@ public class AuthManager {
         storage.findByUUIDAsync(player.getUniqueId()).thenAccept(opt -> opt.ifPresent(account -> {
             Location loc = accountToLocation(account);
             if (loc != null) {
-                previousLocations.put(player.getUniqueId(), loc);
+                previousLocations.put(player.getUniqueId(), loc.clone());
                 if (config.getTeleportSettings().isEnabled() &&
                         "previous".equalsIgnoreCase(config.getTeleportSettings().getMode())) {
-                    runOnPlayer(player, () -> player.teleportAsync(loc));
+                    teleportPlayerLater(player, loc, 1L);
                 }
             }
         }));
+    }
+
+    private void teleportPlayerLater(Player player, Location target, long delayTicks) {
+        if (target == null || target.getWorld() == null) {
+            return;
+        }
+        Location destination = target.clone();
+        Runnable task = () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            player.teleportAsync(destination);
+        };
+        if (delayTicks <= 0L) {
+            player.getScheduler().run(plugin, scheduledTask -> task.run(), null);
+        } else {
+            player.getScheduler().runDelayed(plugin, scheduledTask -> task.run(), null, delayTicks);
+        }
     }
 
     private Location accountToLocation(Account account) {
@@ -330,5 +366,6 @@ public class AuthManager {
         attempts.clear();
         previousLocations.clear();
         ipUsage.clear();
+        damageProtectionUntil.clear();
     }
 }
